@@ -18,8 +18,8 @@ spring:
         registration:
           messaging-client-oidc:
             provider: spring
-            client-id: messaging-client
-            client-secret: secret
+            client-id: messaging-client-oidc
+            client-secret: oidc
             authorization-grant-type: authorization_code
             redirect-uri: "http://127.0.0.1:8080/login/oauth2/code/{registrationId}"
             scope: openid, profile
@@ -44,4 +44,4 @@ spring:
             issuer-uri: http://localhost:9000
 
 messages:
-  base-uri: http://127.0.0.1:8090/messages
+  base-uri: http://localhost:8090/messages

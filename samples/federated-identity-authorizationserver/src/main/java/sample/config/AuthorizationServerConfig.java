@@ -15,16 +15,10 @@
  */
 package sample.config;
 
-import java.util.UUID;
-
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import sample.jose.Jwks;
-import sample.security.FederatedIdentityConfigurer;
-import sample.security.FederatedIdentityIdTokenCustomizer;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -51,9 +45,16 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
+import sample.jose.Jwks;
+import sample.security.FederatedIdentityConfigurer;
+import sample.security.FederatedIdentityIdTokenCustomizer;
+
+import java.util.UUID;
 
 /**
  * @author Steve Riesenberg
@@ -81,6 +82,24 @@ public class AuthorizationServerConfig {
 	// @formatter:off
 	@Bean
 	public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
+		RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
+				.clientId("messaging-client-oidc")
+				.clientSecret("{noop}oidc")
+				.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+				.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+				.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+				.redirectUri("http://127.0.0.1:8080/login/oauth2/code/messaging-client-oidc")
+				.postLogoutRedirectUri("http://127.0.0.1:8080/index")
+				.scope(OidcScopes.OPENID)
+				.scope(OidcScopes.PROFILE)
+				.clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+				.build();
+		RegisteredClient resourceServer = RegisteredClient.withId(UUID.randomUUID().toString())
+				.clientId("resource-server")
+				.clientSecret("{noop}resource")
+				.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+				.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+				.build();
 		RegisteredClient registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
 				.clientId("messaging-client")
 				.clientSecret("{noop}secret")
@@ -88,18 +107,17 @@ public class AuthorizationServerConfig {
 				.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
 				.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
 				.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-				.redirectUri("http://127.0.0.1:8080/login/oauth2/code/messaging-client-oidc")
 				.redirectUri("http://127.0.0.1:8080/authorized")
-				.postLogoutRedirectUri("http://127.0.0.1:8080/index")
-				.scope(OidcScopes.OPENID)
-				.scope(OidcScopes.PROFILE)
 				.scope("message.read")
 				.scope("message.write")
+				.tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).build())
 				.clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
 				.build();
 
 		// Save registered client in db as if in-memory
 		JdbcRegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
+		registeredClientRepository.save(oidcClient);
+		registeredClientRepository.save(resourceServer);
 		registeredClientRepository.save(registeredClient);
 
 		return registeredClientRepository;
