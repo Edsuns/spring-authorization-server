@@ -111,7 +111,7 @@ public class AuthorizationServerConfig {
 				.scope("message.read")
 				.scope("message.write")
 				.tokenSettings(TokenSettings.builder().accessTokenFormat(OAuth2TokenFormat.REFERENCE).build())
-				.clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+				.clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(true).build())
 				.build();
 
 		// Save registered client in db as if in-memory
