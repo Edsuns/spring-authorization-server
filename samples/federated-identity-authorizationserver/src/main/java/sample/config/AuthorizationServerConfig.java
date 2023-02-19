@@ -92,7 +92,7 @@ public class AuthorizationServerConfig {
 				.postLogoutRedirectUri("http://127.0.0.1:8080/index")
 				.scope(OidcScopes.OPENID)
 				.scope(OidcScopes.PROFILE)
-				.clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+				.clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(true).build())
 				.build();
 		RegisteredClient resourceServer = RegisteredClient.withId(UUID.randomUUID().toString())
 				.clientId("resource-server")

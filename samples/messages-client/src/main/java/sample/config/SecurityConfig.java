@@ -26,7 +26,6 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
-import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
@@ -48,19 +47,25 @@ public class SecurityConfig {
 
 	// @formatter:off
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http,
-			OAuth2AuthorizationRequestResolver pkceResolver) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		DefaultOAuth2AuthorizationRequestResolver resolver =
+				new DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository,
+						OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI);
+		resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
+
 		http
 				.authorizeHttpRequests(authorize ->
 						authorize.anyRequest().authenticated()
 				)
 				.oauth2Login(oauth2Login ->
-						oauth2Login.loginPage("/oauth2/authorization/messaging-client-oidc"))
+						oauth2Login
+								.authorizationEndpoint(endpoint -> endpoint.authorizationRequestResolver(resolver))
+								.loginPage("/oauth2/authorization/messaging-client-oidc"))
 				.oauth2Client(client ->
 						client.authorizationCodeGrant()
-								.authorizationRequestResolver(pkceResolver))
+								.authorizationRequestResolver(resolver))
 				.logout(logout ->
-				logout.logoutSuccessHandler(oidcLogoutSuccessHandler()));
+						logout.logoutSuccessHandler(oidcLogoutSuccessHandler()));
 		return http.build();
 	}
 	// @formatter:on
@@ -74,15 +79,6 @@ public class SecurityConfig {
 		oidcLogoutSuccessHandler.setPostLogoutRedirectUri("{baseUrl}/index");
 
 		return oidcLogoutSuccessHandler;
-	}
-
-	@Bean
-	public OAuth2AuthorizationRequestResolver pkceResolver() {
-		DefaultOAuth2AuthorizationRequestResolver resolver =
-				new DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository,
-						OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI);
-		resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
-		return resolver;
 	}
 
 }
